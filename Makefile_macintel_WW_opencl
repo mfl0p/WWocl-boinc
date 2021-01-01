@@ -1,0 +1,62 @@
+# Mark Rodenkirch November 29, 2020
+# 
+# d/l and build boinc in a directory that is at the same level as the WWocl-boinc directory
+# d/l and build primesieve in a directory that is at the same level as the WWocl-boinc directory
+#
+# Mac AP26 OpenCL makefile - Bill Michael May 10 2019
+#
+# Must have AP26 master source folder in same directory as boinc-master folder
+#  critical path assignment is to the boinc-master folder BOINC__DIR
+# Must have alias to MacOSX10.8.sdk in same folder as this makefile and source code
+#   if using a specific OSX target release (CFLAGS)
+# Must copy config.h from boinc-master/clientgui/mac to this same folder
+# make -B -f makefile_macintel_ap26_opencl
+#
+
+CC = clang++
+LD = $(CC)
+
+.SUFFIXES:
+.SUFFIXES: .o .c .h .cl .cpp
+
+APP = WW_opencl_macintel64
+
+SRC = main.cpp wwcpu.cpp simpleCL.c simpleCL.h kernels/clearn.cl kernels/clearresult.cl kernels/getsegprimes.cl kernels/wieferich.cl kernels/wallsunsun.cl
+
+KERNEL_HEADERS = kernels/clearn.h kernels/clearresult.h kernels/getsegprimes.h kernels/wieferich.h kernels/wallsunsun.h
+
+OBJ = main.o simpleCL.o wwcpu.o
+
+BOINC_DIR = ../boinc
+PRIMESIEVE_DIR = ../primesieve
+
+BOINC_INC = -I$(BOINC_DIR)/api -I$(BOINC_DIR)/lib -I$(BOINC_DIR)/clientgui/Mac -I$(BOINC_DIR)
+BOINC_LIB = -L$(BOINC_DIR)/mac_build/build/Deployment/ -lboinc -lboinc_api -lboinc_opencl
+
+PRIMESIEVE_INC = -I$(PRIMESIEVE_DIR)
+PRIMESIEVE_LIB = -lprimesieve_s
+
+DFLAGS  = 
+CFLAGS  = -I . -I kernels -O3 -arch x86_64
+LDFLAGS = $(CFLAGS) 
+
+all : $(APP)
+
+$(APP) : $(OBJ)
+	$(LD) $(LDFLAGS) $(BOINC_LIB) $(PRIMESIEVE_LIB) -framework OpenCL -o $@ $^
+
+main.o : $(SRC) $(KERNEL_HEADERS)
+	$(CC) $(DFLAGS) $(CFLAGS) $(BOINC_INC) $(PRIMESIEVE_INC) -c -o $@ main.cpp
+
+wwcpu.o : $(SRC)
+	$(CC) $(CFLAGS) $(OCL_INC) $(BOINC_INC) -c -o $@ wwcpu.cpp
+
+simpleCL.o : $(SRC)
+	$(CC) $(DFLAGS) $(CFLAGS) $(BOINC_INC) -c -o $@ simpleCL.c
+
+.cl.h:
+	./cltoh.pl $< > $@
+
+clean :
+	rm -f *.o kernels/*.h $(APP)
+
