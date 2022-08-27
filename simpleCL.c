@@ -476,7 +476,6 @@ cl_kernel _sclCreateKernel( sclSoft software ) {
 }
 
 
-// Bryan Little - not using events.. and 3D workgroup sizes
 
 void sclEnqueueKernel( sclHard hardware, sclSoft software) {
 
@@ -488,6 +487,23 @@ void sclEnqueueKernel( sclHard hardware, sclSoft software) {
 		fprintf(stderr, "\nError on EnqueueKernel %s", software.kernelName );
 		sclPrintErrorFlags(err); 
 	}
+		
+}
+
+
+cl_event sclEnqueueKernelEvent( sclHard hardware, sclSoft software) {
+
+	cl_event myEvent;
+	cl_int err;
+
+	err = clEnqueueNDRangeKernel( hardware.queue, software.kernel, 3, NULL, software.global_size, software.local_size, 0, NULL, &myEvent );
+	if ( err != CL_SUCCESS ) {
+		printf( "\nError on EnqueueKernel %s", software.kernelName );
+		fprintf(stderr, "\nError on EnqueueKernel %s", software.kernelName );
+		sclPrintErrorFlags(err); 
+	}
+
+	return myEvent;
 		
 }
 

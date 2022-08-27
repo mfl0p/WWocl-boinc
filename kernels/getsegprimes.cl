@@ -26,8 +26,7 @@
 
 	4) Packing the numbers in local memory allows all threads to stay busy in the next step, which is performing
 	   a base 2 PRP test.  If the number passes the test, it is stored in global memory with an atomic counter.
-	   The magic number and shift values are also stored so they won't have to be recalculated in the Wieferich
-	   or WallSunSun kernels.
+	   The invert value is also stored so it won't have to be recalculated in the Wieferich or WallSunSun kernels.
 
 	A note about the bit sieve arrays.  Using constant memory isn't optimal but works well.  Each thread isn't
 	going to hit the same index at the same time, so constant memory accesses will be serialized.  If they do

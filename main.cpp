@@ -6,7 +6,7 @@
 
 #define MAJORV 1
 #define MINORV 0
-#define SUFFIXV "4"
+#define SUFFIXV "5"
 
 #include <iostream>
 #include <cinttypes>
@@ -323,6 +323,47 @@ int isPrime(uint64_t N)
 	return 1;
 }
 
+
+void waitOnEvent(sclHard hardware, cl_event event){
+
+	cl_int err;
+	cl_int info;
+	struct timespec sleep_time;
+	sleep_time.tv_sec = 0;
+	sleep_time.tv_nsec = 1000000;	// 1ms
+
+	err = clFlush(hardware.queue);
+	if ( err != CL_SUCCESS ) {
+		printf( "ERROR: clFlush\n" );
+		fprintf(stderr, "ERROR: clFlush\n" );
+		sclPrintErrorFlags( err );
+       	}
+
+	while(true){
+
+		nanosleep(&sleep_time,NULL);
+
+		err = clGetEventInfo(event, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &info, NULL);
+		if ( err != CL_SUCCESS ) {
+			printf( "ERROR: clGetEventInfo\n" );
+			fprintf(stderr, "ERROR: clGetEventInfo\n" );
+			sclPrintErrorFlags( err );
+	       	}
+
+		if(info == CL_COMPLETE){
+			err = clReleaseEvent(event);
+			if ( err != CL_SUCCESS ) {
+				printf( "ERROR: clReleaseEvent\n" );
+				fprintf(stderr, "ERROR: clReleaseEvent\n" );
+				sclPrintErrorFlags( err );
+		       	}
+
+			return;
+		}
+	}
+}
+
+
 void sleepCPU(sclHard hardware){
 
 	cl_event kernelsDone;
@@ -339,26 +380,35 @@ void sleepCPU(sclHard hardware){
 		sclPrintErrorFlags(err); 
 	}
 
-	clFlush(hardware.queue);
-
-	err = clGetEventInfo(kernelsDone, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &info, NULL);
+	err = clFlush(hardware.queue);
 	if ( err != CL_SUCCESS ) {
-		printf( "ERROR: clGetEventInfo\n" );
-		fprintf(stderr, "ERROR: clGetEventInfo\n" );
+		printf( "ERROR: clFlush\n" );
+		fprintf(stderr, "ERROR: clFlush\n" );
 		sclPrintErrorFlags( err );
        	}
 
-	// sleep until event complete
-	while(info >= 0 && info != CL_COMPLETE){
+	while(true){
+
 		nanosleep(&sleep_time,NULL);
+
 		err = clGetEventInfo(kernelsDone, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &info, NULL);
 		if ( err != CL_SUCCESS ) {
 			printf( "ERROR: clGetEventInfo\n" );
 			fprintf(stderr, "ERROR: clGetEventInfo\n" );
 			sclPrintErrorFlags( err );
 	       	}
+
+		if(info == CL_COMPLETE){
+			err = clReleaseEvent(kernelsDone);
+			if ( err != CL_SUCCESS ) {
+				printf( "ERROR: clReleaseEvent\n" );
+				fprintf(stderr, "ERROR: clReleaseEvent\n" );
+				sclPrintErrorFlags( err );
+		       	}
+
+			return;
+		}
 	}
-	clReleaseEvent(kernelsDone);
 
 }
 
@@ -982,8 +1032,8 @@ void profileGPU(progData& pd, int computeunits, int COMPUTE, int clworksize, uin
 		prof_multi = (double)clworksize / prof_avg_ms;
 	}
 	else{
-		// target kernel time is 11ms
-		prof_multi = 11.0 / prof_avg_ms;
+		// target kernel time is 10ms
+		prof_multi = 10.0 / prof_avg_ms;
 	}
 
 	// update chunk size based on the profile
@@ -1264,10 +1314,13 @@ int main(int argc, char *argv[])
 	computeunits = (int)CUs;
 	char amd_s[] = "Advanced";
 	char intel_s[] = "Intel";
-	char nvidia_s[] = "NVIDIA";
-	
+	char nvidia_s[] = "NVIDIA";	
+
 	if(strstr((char*)device_string1, (char*)nvidia_s) != NULL){
+
 #ifdef _WIN32
+		// pascal or newer gpu on windows 10,11 allows long kernel runtimes without screen refresh issues
+
 		float winVer = (float)getSysOpType();
 
 		if(winVer >= 10.0f && !COMPUTE){
@@ -1280,14 +1333,46 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}
 
-			if(ccmajor >= 6){  // pascal or newer gpu on windows 10
-				fprintf(stderr, "Detected Windows %0.1f, using compute preemption.\n", winVer);
-				if(debuginfo){
-					printf( "Detected Windows %0.1f, using compute preemption.\n", winVer );
-				}
+			if(ccmajor >= 6){
 				COMPUTE = 1;
 			}
 		}
+
+#else
+		// linux
+		// list of gpus without video output.  datacenter or mining cards.
+		char dc0[] = "H100";
+		char dc1[] = "A100";
+		char dc2[] = "V100";
+		char dc3[] = "T4";
+		char dc4[] = "P106";
+		char dc5[] = "P104";
+		char dc6[] = "P102";
+		char dc7[] = "P100";
+		char dc8[] = "CMP";
+		char dc9[] = "A2";
+		char dc10[] = "A10";
+		char dc11[] = "A16";
+		char dc12[] = "A30";
+		char dc13[] = "A40";
+
+		if(	strstr((char*)device_string0, (char*)dc0) != NULL
+			|| strstr((char*)device_string0, (char*)dc1) != NULL
+			|| strstr((char*)device_string0, (char*)dc2) != NULL
+			|| strstr((char*)device_string0, (char*)dc3) != NULL
+			|| strstr((char*)device_string0, (char*)dc4) != NULL
+			|| strstr((char*)device_string0, (char*)dc5) != NULL
+			|| strstr((char*)device_string0, (char*)dc6) != NULL
+			|| strstr((char*)device_string0, (char*)dc7) != NULL
+			|| strstr((char*)device_string0, (char*)dc8) != NULL
+			|| strstr((char*)device_string0, (char*)dc9) != NULL
+			|| strstr((char*)device_string0, (char*)dc10) != NULL
+			|| strstr((char*)device_string0, (char*)dc11) != NULL
+			|| strstr((char*)device_string0, (char*)dc12) != NULL
+			|| strstr((char*)device_string0, (char*)dc13) != NULL){
+			COMPUTE = 1;
+		}
+
 #endif
 	}
 	else if(strstr((char*)device_string1, (char*)amd_s) != NULL){
@@ -1557,10 +1642,20 @@ int main(int argc, char *argv[])
 	// clear result arrays
 	sclEnqueueKernel(pd.hardware, pd.clearresult);
 
-	int in_queue = 0;
+
+	cl_event launchEvent;
+	int iter = 0;
 	uint64_t stop;
 
 	for( uint64_t start = current; start < top; start = stop ){
+
+		if(iter == 3){
+			// sleep cpu while waiting on iter 0 kernel launch event to complete
+			// iter 1,2 kernels will be running on gpu while cpu queues more kernels
+			// this way we limit the queue depth and prevent stalling the gpu
+			waitOnEvent(pd.hardware, launchEvent);
+			iter = 0;
+		}
 
 		stop = start + calc_range;
 
@@ -1591,7 +1686,14 @@ int main(int argc, char *argv[])
 		sclSetKernelArg(pd.getsegprimes, 0, sizeof(uint64_t), &kernel_start);
 		sclSetKernelArg(pd.getsegprimes, 1, sizeof(uint64_t), &stop);
 		sclSetKernelArg(pd.getsegprimes, 2, sizeof(int32_t), &wheelidx);
-		sclEnqueueKernel(pd.hardware, pd.getsegprimes);
+		if(iter == 0){
+			launchEvent = sclEnqueueKernelEvent(pd.hardware, pd.getsegprimes);
+		}
+		else{
+			sclEnqueueKernel(pd.hardware, pd.getsegprimes);
+		}
+		++iter;
+
 
 		// command line argument to check all GPU primes with CPU for testing
 		if(testPRPgen){
@@ -1605,26 +1707,15 @@ int main(int argc, char *argv[])
 		// wallsunsun test
 		sclEnqueueKernel(pd.hardware, pd.wallsunsun);
 
-		// sleep cpu thread
-		if(COMPUTE){
-			if( ++in_queue == 3 ){  // about 1 second of kernels queued
-				in_queue = 0;
-				sleepCPU(pd.hardware);
-			}
-		}
-		else{
-			sleepCPU(pd.hardware);
-		}
-
-
 		// 1 minute checkpoint
 		time(&ckpt_curr);
 		int ckpt_diff = (int)ckpt_curr - (int)ckpt_last;
 
 		if( ckpt_diff > 60 || stop == top ){
 
+			waitOnEvent(pd.hardware, launchEvent);
 			sleepCPU(pd.hardware);
-			in_queue = 0;
+			iter = 0;
 
 			boinc_begin_critical_section();
 
