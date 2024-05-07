@@ -255,14 +255,14 @@ __kernel __attribute__ ((reqd_work_group_size(256, 1, 1))) void getsegprimes(ulo
 	}
 
 	// sieve small primes to 113, this seems optimal
-	uint bitsieve = ~(p7[P%7] | p11[P%11] | p13[P%13] | p17[P%17] | p19[P%19] | p23[P%23] | p29[P%29] | p31[P%31]
+	uint bitsieve = p7[P%7] | p11[P%11] | p13[P%13] | p17[P%17] | p19[P%19] | p23[P%23] | p29[P%29] | p31[P%31]
 			| p37[P%37] | p41[P%41] | p43[P%43] | p47[P%47] | p53[P%53] | p59[P%59] | p61[P%61] | p67[P%67]
 			| p71[P%71] | p73[P%73] | p79[P%79] | p83[P%83] | p89[P%89] | p97[P%97] | p101[P%101]
-			| p103[P%103] | p107[P%107] | p109[P%109] | p113[P%113]);
+			| p103[P%103] | p107[P%107] | p109[P%109] | p113[P%113];
 
 	while(P < end){
 
-		if(bitsieve & 1){
+		if( (bitsieve & 1) == 0 ){
 			sieved[atomic_add(&count, 1)] = P;
 		}
 

@@ -14,11 +14,11 @@ OCL_INC =
 OCL_LIB = -L . -lOpenCL -lprimesieve
 
 OCL_INC = 
-OCL_LIB = C:/mingwbuilds/WWgpu/OpenCL.dll C:/mingwbuilds/WWgpu/libprimesieve.a
+OCL_LIB = OpenCL.dll libprimesievewin.a
 
 BOINC_DIR = C:/mingwbuilds/boinc
 BOINC_INC = -I$(BOINC_DIR)/lib -I$(BOINC_DIR)/api -I$(BOINC_DIR) -I$(BOINC_DIR)/win_build
-BOINC_LIB = -L$(BOINC_DIR)/lib -L$(BOINC_DIR)/api -L$(BOINC_DIR) -lboinc_opencl -lboinc_api -lboinc -lstdc++ -lpthread
+BOINC_LIB = -L$(BOINC_DIR)/lib -L$(BOINC_DIR)/api -L$(BOINC_DIR) -lboinc_opencl -lboinc_api -lboinc -lstdc++
 
 CFLAGS  = -I . -I kernels -O3 -m64 -Wall
 LDFLAGS = $(CFLAGS) -static

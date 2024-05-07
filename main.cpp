@@ -6,7 +6,7 @@
 
 #define MAJORV 1
 #define MINORV 0
-#define SUFFIXV "5"
+#define SUFFIXV "6"
 
 #include <iostream>
 #include <cinttypes>
@@ -35,7 +35,7 @@
 #include "prime.h"
 #include "WW.h"
 
-#include "include/primesieve.h"
+#include "primesieve.h"
 
 #define RESULTS_FILENAME "results-WW.txt"
 #define STATE_FILENAME_A "stateA-WW.txt"
@@ -324,13 +324,20 @@ int isPrime(uint64_t N)
 }
 
 
+// sleep CPU thread while waiting on the specified event to complete in the command queue
+// using critical sections to prevent BOINC from shutting down the program while kernels are running on the GPU
 void waitOnEvent(sclHard hardware, cl_event event){
 
 	cl_int err;
 	cl_int info;
+#ifdef _WIN32
+#else
 	struct timespec sleep_time;
 	sleep_time.tv_sec = 0;
 	sleep_time.tv_nsec = 1000000;	// 1ms
+#endif
+
+	boinc_begin_critical_section();
 
 	err = clFlush(hardware.queue);
 	if ( err != CL_SUCCESS ) {
@@ -341,7 +348,11 @@ void waitOnEvent(sclHard hardware, cl_event event){
 
 	while(true){
 
+#ifdef _WIN32
+		Sleep(1);
+#else
 		nanosleep(&sleep_time,NULL);
+#endif
 
 		err = clGetEventInfo(event, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &info, NULL);
 		if ( err != CL_SUCCESS ) {
@@ -358,21 +369,38 @@ void waitOnEvent(sclHard hardware, cl_event event){
 				sclPrintErrorFlags( err );
 		       	}
 
+			boinc_end_critical_section();
+
 			return;
 		}
 	}
 }
 
 
+// queue a marker and sleep CPU thread until marker has been reached in the command queue
 void sleepCPU(sclHard hardware){
 
 	cl_event kernelsDone;
 	cl_int err;
 	cl_int info;
+#ifdef _WIN32
+#else
 	struct timespec sleep_time;
 	sleep_time.tv_sec = 0;
 	sleep_time.tv_nsec = 1000000;	// 1ms
+#endif
 
+	boinc_begin_critical_section();
+
+	// OpenCL v2.0
+/*
+	err = clEnqueueMarkerWithWaitList( hardware.queue, 0, NULL, &kernelsDone);
+	if ( err != CL_SUCCESS ) {
+		printf( "ERROR: clEnqueueMarkerWithWaitList\n");
+		fprintf(stderr, "ERROR: clEnqueueMarkerWithWaitList\n");
+		sclPrintErrorFlags(err); 
+	}
+*/
 	err = clEnqueueMarker( hardware.queue, &kernelsDone);
 	if ( err != CL_SUCCESS ) {
 		printf( "ERROR: clEnqueueMarker\n");
@@ -389,7 +417,11 @@ void sleepCPU(sclHard hardware){
 
 	while(true){
 
+#ifdef _WIN32
+		Sleep(1);
+#else
 		nanosleep(&sleep_time,NULL);
+#endif
 
 		err = clGetEventInfo(kernelsDone, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &info, NULL);
 		if ( err != CL_SUCCESS ) {
@@ -406,10 +438,11 @@ void sleepCPU(sclHard hardware){
 				sclPrintErrorFlags( err );
 		       	}
 
+			boinc_end_critical_section();
+
 			return;
 		}
 	}
-
 }
 
 

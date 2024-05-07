@@ -162,7 +162,7 @@ inline ulong2 m2p_square(const ulong2 x, const ulong p, const ulong q)
 // r0 + p * r1 = x * y (mod p^2) where 0 <= r0, r1 < p
 inline ulong2 m2p_mul_s(const ulong x, const ulong y, const ulong p, const ulong q)
 {
-	const ulong2 t = mul_wide(x, x);
+	const ulong2 t = mul_wide(x, y);
 	const ulong u0 = q * t.s0;
 	const ulong t1 = t.s1;
 	const ulong v1 = mul_hi(p, u0);
